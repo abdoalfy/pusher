@@ -26,12 +26,12 @@ class ChatController extends Controller
     
         // Create a new chat message
         $chat = Chat::create($data);    
-        $reciver = User::find($userId);
+        $reciver = $user;
         if ($chat) {
-            broadcast(new ChatSent($reciver,$user->id,$request->message));
+            broadcast(new ChatSent($reciver,auth()->user()->id,$request->message));
         }
         return response()->json('Message sent successfully');
     }
-    
+
 }
 
