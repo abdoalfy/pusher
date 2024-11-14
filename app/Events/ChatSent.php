@@ -53,7 +53,7 @@ class ChatSent implements ShouldBroadcastNow
         return [
             'message' => $this->message,
             'sender_name' => $this->sender,
-            'sender_avatar' => $this->sender, // Assuming you have an avatar field
+            'sender_avatar' => "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png", // Assuming you have an avatar field
         ];
     }
 }

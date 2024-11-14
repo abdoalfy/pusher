@@ -172,100 +172,105 @@ body {
 </body>
 <script>
     document.getElementById('chat-form').addEventListener('submit', function (e) {
-        e.preventDefault();
-    
-        const messageInput = document.getElementById('message-input');
-        const message = messageInput.value;
-        const userId = {{ $user->id }}; // Receiver user ID from the URL or Blade
-    
-        // Send the message via AJAX
-        fetch(`/send/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ message: message })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data) {
-                // Display the sender's message in the chat window
-                const chatWindow = document.getElementById('chat-window');
-                const newMessage = document.createElement('article');
-                newMessage.className = 'msg-container msg-self';
-    
-                newMessage.innerHTML = `
-                    <div class="msg-box">
-                        <div class="flr">
-                            <div class="messages">
-                                <p class="msg">${message}</p>
-                            </div>
-                            <span class="timestamp">
-                                <span class="username">You</span> &bull;
-                                <span class="posttime">Now</span>
-                            </span>
-                        </div>
-                        <img class="user-img" src="//gravatar.com/avatar/56234674574535734573000000000001?d=retro" />
-                    </div>
-                `;
-    
-                chatWindow.appendChild(newMessage);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-                messageInput.value = '';
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    });
-    
-    // Initialize Pusher
-    Pusher.logToConsole = true;
-    var pusher = new Pusher('8e1059c5885f3b9237e2', {
-        cluster: 'eu'
-    });
-    
-    // Subscribe to the receiver's private channel
-    var channel = pusher.subscribe('chat.{{ auth()->user()->id }}');
+    e.preventDefault();
 
-    var channel = pusher.subscribe('my-channel');
-    channel.bind('chat', function(data) {
-      alert(JSON.stringify(data));
-    });
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value;
+    const userId = {{ $user->id }}; // Receiver user ID from the Blade file
 
+    // Send the message via AJAX
+    fetch(`/send/${userId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data) {
+            // Display the sender's message in the chat window
+            appendMessage(message, 'You', true);
+            messageInput.value = '';
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
 
+// Function to append message to chat window
+function appendMessage(message, username, isSelf = false, avatarUrl = '') {
+    const chatWindow = document.getElementById('chat-window');
+    const newMessage = document.createElement('article');
+    newMessage.className = `msg-container ${isSelf ? 'msg-self' : 'msg-other'}`;
 
-
-
-    channel.bind('chat', function(data) {
-        // Stringify the message content
-        const messageContent = JSON.stringify(data.message);
-    
-        // Append the incoming message to the chat window
-        const chatWindow = document.getElementById('chat-window');
-        const newMessage = document.createElement('article');
-        newMessage.className = 'msg-container msg-other';
-    
-        newMessage.innerHTML = `
-    <div class="msg-box">
-        <div class="flr">
-            <div class="messages">
-                <p class="msg">${messageContent}</p>
+    newMessage.innerHTML = `
+        <div class="msg-box">
+            <div class="flr">
+                <div class="messages">
+                    <p class="msg">${message}</p>
+                </div>
+                <span class="timestamp">
+                    <span class="username">${username}</span> &bull;
+                    <span class="posttime">Now</span>
+                </span>
             </div>
-            <span class="timestamp">
-                <span class="username">${data.sender_name}</span> &bull;
-                <span class="posttime">Now</span>
-            </span>
+            <img class="user-img" 
+                 src="${avatarUrl || 'https://gravatar.com/avatar/56234674574535734573000000000001?d=retro'}" 
+                 alt="User Image"/>
         </div>
-        <img class="user-img" 
-             src="https://gravatar.com/avatar/56234674574535734573000000000001?d=retro" 
-             onerror="this.onerror=null; this.src='/path/to/local/fallback-image.jpg';" 
-             alt="User Image"/>
-    </div>
-`;
-    
-        chatWindow.appendChild(newMessage);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    });
-    </script>    
+    `;
+
+    chatWindow.appendChild(newMessage);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+
+// Initialize Pusher and subscribe to the user's private channel
+Pusher.logToConsole = true;
+var pusher = new Pusher('8e1059c5885f3b9237e2', {
+    cluster: 'eu',
+    encrypted: true
+});
+
+var channel = pusher.subscribe('chat' + {{ auth()->user()->id }});
+
+// Bind the event and append incoming message data
+channel.bind('App\\Events\\ChatSent', function(data) {
+    if (data.message && data.sender_name) {
+        // Append the incoming message to the chat window
+        appendMessage(data.message, data.sender_name, false, data.sender_avatar);
+    } else {
+        console.error('Received data missing necessary fields:', data);
+    }
+});
+
+// Append message function to add a new message to the chat window
+function appendMessage(message, username, isSelf = false, avatarUrl = '') {
+    const chatWindow = document.getElementById('chat-window');
+    const newMessage = document.createElement('article');
+    newMessage.className = `msg-container ${isSelf ? 'msg-self' : 'msg-other'}`;
+
+    newMessage.innerHTML = `
+        <div class="msg-box">
+            <div class="flr">
+                <div class="messages">
+                    <p class="msg">${message}</p>
+                </div>
+                <span class="timestamp">
+                    <span class="username">${username}</span> &bull;
+                    <span class="posttime">Now</span>
+                </span>
+            </div>
+            <img class="user-img" 
+                 src="${avatarUrl || 'https://gravatar.com/avatar/56234674574535734573000000000001?d=retro'}" 
+                 alt="User Image"/>
+        </div>
+    `;
+
+    chatWindow.appendChild(newMessage);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+</script>    
 </html>
 
